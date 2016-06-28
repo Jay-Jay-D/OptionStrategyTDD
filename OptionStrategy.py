@@ -1,4 +1,3 @@
-import numpy as np
 from enum import Enum, IntEnum
 
 
@@ -19,21 +18,9 @@ class OptionOperation(object):
         self.strike_price = strike_price
         self.premiun = premiun
 
-
-def value_call(option, price):
-    value = - option.premiun if price >= option.strike_price else (option.strike_price - option.premiun - price)
-    return value * option.operation.value
-
-
-def value_put(option, price):
-    value = - option.premiun if price <= option.strike_price else (price - option.strike_price - option.premiun)
-    return value * option.operation.value
-
-
-def value_option(option, price):
-    value = np.nan
-    if option.option_type == OptionType.Call:
-        value = value_call(option, price)
-    elif option.option_type == OptionType.Put:
-        value = value_put(option, price)
-    return value
+    def value_at(self, price):
+        if self.option_type == OptionType.Call:
+            value = - self.premiun if price >= self.strike_price else (self.strike_price - self.premiun - price)
+        elif self.option_type == OptionType.Put:
+            value = - self.premiun if price <= self.strike_price else (price - self.strike_price - self.premiun)
+        return value * self.operation.value

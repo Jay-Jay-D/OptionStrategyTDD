@@ -29,7 +29,7 @@ def test_options_are_correctly_evaluated(comment, operation, option_type, expect
 
     # Act
     for price in range(100, 200, 5):
-        actual_values.append(value_option(option, price))
+        actual_values.append(option.value_at(price))
 
     # Assert
     assert expected_value == actual_values
