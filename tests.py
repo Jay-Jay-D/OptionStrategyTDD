@@ -91,6 +91,15 @@ def test_when_option_is_correctly_instantiated_with_out_ConId_then_its_data_is_c
     assert option.multiplier == 50
 
 
+def test_OptionOperation_string_representation():
+    option = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244,
+                                        position=Position.Long, premium=10, quantity=2)
+
+    message = str(option)
+
+    assert message == '2 Long Call @ 2070 contracts of ES expiring at 2016-06-17, premium 10'
+
+
 def test_when_many_OptionOperation_is_added_to_OtpionStrategy_then_strategy_is_correctly_valued():
     # Arrange
     # Example source: http://www.theoptionsguide.com/iron-condor.aspx
@@ -117,11 +126,6 @@ def test_when_many_OptionOperation_is_added_to_OtpionStrategy_then_strategy_is_c
     assert expected_strategy_valuation == actual_strategy_valuation
 
 # class OptionStrategyTests(unittest.TestCase):
-#     def test_when_buy_a_new_option_then_strategy_is_updated(self):
-#         self.assertTrue(False)
-#
-#     def test_when_sell_a_new_option_then_strategy_is_updated(self):
-#         self.assertTrue(False)
 #
 #     def test_when_an_option_was_sold_and_bought_then_strategy_has_no_position(self):
 #         self.assertTrue(False)

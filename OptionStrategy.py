@@ -1,6 +1,7 @@
 from enum import Enum, IntEnum
 
 import pandas as pd
+from dateutil.parser import parse
 
 
 class OptionType(Enum):
@@ -36,18 +37,25 @@ class OptionStrategy(object):
 
 
 class OptionOperation(object):
-    def __init__(self, position, premium, option_type, strike_price, multiplier=1, quantity=1, expiry=None):
+    def __init__(self, position, premium, option_type, strike_price, con_id=None, underlying_asset=None, multiplier=1,
+                 quantity=1, expiry=None):
         # Option properties
         self.option_type = option_type  # right
         self.strike_price = strike_price
-        self.ConId = None
-        self.underlying_asset = None  # symbol
+        self.ConId = con_id
+        self.underlying_asset = underlying_asset
         self.multiplier = multiplier
         self.expiry = expiry
         # Operation properties
         self.position = position
         self.premium = premium
         self.quantity = quantity
+
+    def __str__(self):
+        expiry = parse(self.expiry).strftime('%Y-%m-%d')
+        return ("{} {} {} @ {} contracts of {} expiring at {}, premium {}"
+                .format(self.quantity, self.position.name, self.option_type.name, self.strike_price,
+                        self.underlying_asset, expiry, self.premium))
 
     @classmethod
     def from_contract_description(cls, contracts: pd.DataFrame, position, premium, option_type=None,
@@ -90,20 +98,19 @@ class OptionOperation(object):
             raise KeyError('The ConId does not exist in the contract JSON file.')
 
         if right == 'C':
-            cls.option_type = OptionType.Call
+            option_type = OptionType.Call
         elif right == 'P':
-            cls.option_type = OptionType.Put
+            option_type = OptionType.Put
         else:
             raise ValueError('The ConId is not an option.')
 
-        cls.ConId = ConID
-        cls.position = position
-        cls.strike_price = contracts.ix[ConID, 'Strike']
-        cls.premium = premium
-        cls.underlying_asset = contracts.ix[ConID, 'Symbol']
-        cls.expiry = str(contracts.ix[ConID, 'Expiry'])
-        cls.multiplier = contracts.ix[ConID, 'Multiplier']
-        return cls
+        con_id = ConID
+        strike_price = contracts.ix[ConID, 'Strike']
+        underlying_asset = contracts.ix[ConID, 'Symbol']
+        expiry = str(contracts.ix[ConID, 'Expiry'])
+        multiplier = contracts.ix[ConID, 'Multiplier']
+        return cls(position, premium, option_type, strike_price, con_id, underlying_asset, multiplier, quantity,
+                   expiry)
 
     def value_at(self, price):
         if self.option_type == OptionType.Call:
@@ -127,3 +134,7 @@ class OptionOperation(object):
             return OptionStatus.ITM
         else:
             return OptionStatus.OTM
+
+
+if __name__ == '__main__':
+    pass
