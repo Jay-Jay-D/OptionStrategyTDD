@@ -26,9 +26,17 @@ option_status_test_cases = (("comment", "position", "option_type", "price", "cor
 
                             ])
 
+option_intrinsic_value_test_cases = (("comment", "position", "option_type", "price", "intrinsic_value"),
+                                     [
+                                         ('Call @150 intrinsic value at 170', 1, 0, 170, 20),
+                                         ('Call @150 intrinsic value at 120', 1, 0, 120, 0),
+                                         ('Put  @150 intrinsic value at 120', 1, 1, 120, 30),
+                                         ('Put  @150 intrinsic value at 160', 1, 1, 160, 0)
+                                     ])
+
 
 @pytest.mark.parametrize(*option_valuation_test_cases)
-def test_options_are_correctly_evaluated(comment, position, option_type, expected_values_formula):
+def test_options_profit_loss_is_correctly_evaluated(comment, position, option_type, expected_values_formula):
     # Arrange
     actual_values = []
     expected_value = eval(expected_values_formula)
@@ -37,7 +45,7 @@ def test_options_are_correctly_evaluated(comment, position, option_type, expecte
     option = OptionOperation(position=position, premium=10, option_type=option_type, strike_price=150)
     # Act
     for price in range(100, 200, 5):
-        actual_values.append(option.value_at(price))
+        actual_values.append(option.profit_loss_at(price))
     # Assert
     assert expected_value == actual_values
 
@@ -49,6 +57,15 @@ def test_option_status_is_correctly_estimated(comment, position, option_type, pr
     option = OptionOperation(position=position, premium=10, option_type=option_type, strike_price=150)
 
     assert option.status_at(price) == OptionStatus(correct_status)
+
+
+@pytest.mark.parametrize(*option_intrinsic_value_test_cases)
+def testing_intrinsic_value_is_correctly_estimated(comment, position, option_type, price, intrinsic_value):
+    position = Position(position)
+    option_type = OptionType(option_type)
+    option = OptionOperation(position=position, premium=10, option_type=option_type, strike_price=150)
+
+    assert option.intrinsic_value_at(price) == intrinsic_value
 
 
 def test_when_a_non_option_is_taken_using_ConId_then_throws_ValueError_exception():
@@ -92,15 +109,16 @@ def test_when_option_is_correctly_instantiated_with_out_ConId_then_its_data_is_c
 
 
 def test_OptionOperation_string_representation():
+    # Arrange
     option = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244,
-                                        position=Position.Long, premium=10, quantity=2)
-
+                                        position=Position.Long, premium=1, quantity=2)
+    # Act
     message = str(option)
+    # Assert
+    assert message == '2 Long ES June-16 Call 2070 at 100'
 
-    assert message == '2 Long Call @ 2070 contracts of ES expiring at 2016-06-17, premium 10'
 
-
-def test_when_many_OptionOperation_is_added_to_OtpionStrategy_then_strategy_is_correctly_valued():
+def test_when_many_OptionOperation_is_added_to_OptionStrategy_then_strategy_is_correctly_valued():
     # Arrange
     # Example source: http://www.theoptionsguide.com/iron-condor.aspx
     option_1 = OptionOperation(position=Position.Long, premium=50, option_type=OptionType.Put, strike_price=35,
@@ -112,7 +130,6 @@ def test_when_many_OptionOperation_is_added_to_OtpionStrategy_then_strategy_is_c
     option_4 = OptionOperation(position=Position.Long, premium=50, option_type=OptionType.Call, strike_price=55,
                                multiplier=100)
     expected_strategy_valuation = [-400, -400, 100, 100, 100, -400, -400]
-
     # Act
     strategy = OptionStrategy()
     strategy.add(option_1)
@@ -120,8 +137,9 @@ def test_when_many_OptionOperation_is_added_to_OtpionStrategy_then_strategy_is_c
     strategy.add(option_3)
     strategy.add(option_4)
 
-    actual_strategy_valuation = strategy.evaluate_range(30, 60, 5)
-
+    actual_strategy_valuation = []
+    for price in range(30, 65, 5):
+        actual_strategy_valuation.append(strategy.profit_loos_at(price))
     # Assert
     assert expected_strategy_valuation == actual_strategy_valuation
 

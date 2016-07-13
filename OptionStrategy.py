@@ -26,17 +26,15 @@ class OptionStrategy(object):
     def add(self, option):
         self.strategy_options.append(option)
 
-    def evaluate_range(self, start, end, step=5):
-        valuation = []
-        for price in range(start, end + step, step):
-            value = 0
-            for option in self.strategy_options:
-                value += option.value_at(price)
-            valuation.append(value)
-        return valuation
+    def profit_loos_at(self, price):
+        value = 0
+        for option in self.strategy_options:
+            value += option.profit_loss_at(price)
+        return value
 
 
 class OptionOperation(object):
+    # region Constructors
     def __init__(self, position, premium, option_type, strike_price, con_id=None, underlying_asset=None, multiplier=1,
                  quantity=1, expiry=None):
         # Option properties
@@ -50,12 +48,6 @@ class OptionOperation(object):
         self.position = position
         self.premium = premium
         self.quantity = quantity
-
-    def __str__(self):
-        expiry = parse(self.expiry).strftime('%Y-%m-%d')
-        return ("{} {} {} @ {} contracts of {} expiring at {}, premium {}"
-                .format(self.quantity, self.position.name, self.option_type.name, self.strike_price,
-                        self.underlying_asset, expiry, self.premium))
 
     @classmethod
     def from_contract_description(cls, contracts: pd.DataFrame, position, premium, option_type=None,
@@ -109,10 +101,19 @@ class OptionOperation(object):
         underlying_asset = contracts.ix[ConID, 'Symbol']
         expiry = str(contracts.ix[ConID, 'Expiry'])
         multiplier = contracts.ix[ConID, 'Multiplier']
+        premium = premium * quantity * multiplier
         return cls(position, premium, option_type, strike_price, con_id, underlying_asset, multiplier, quantity,
                    expiry)
 
-    def value_at(self, price):
+    # endregion
+
+    def __str__(self):
+        expiry = parse(self.expiry).strftime('%B-%y')
+        return ("{} {} {} {} {} {} at {}"
+                .format(self.quantity, self.position.name, self.underlying_asset, expiry,
+                        self.option_type.name, self.strike_price, self.premium))
+
+    def profit_loss_at(self, price):
         if self.option_type == OptionType.Call:
             if price <= self.strike_price:
                 value = - self.premium
@@ -125,15 +126,29 @@ class OptionOperation(object):
                 value = (self.strike_price - price) * self.multiplier - self.premium
         return value * self.position.value * self.quantity
 
-    def intrinsic_value_at(self, price):
-        return max(self.value_at(price), 0)
-
     def status_at(self, price):
         if ((self.option_type == OptionType.Call and price >= self.strike_price) or
                 (self.option_type == OptionType.Put and price <= self.strike_price)):
             return OptionStatus.ITM
         else:
             return OptionStatus.OTM
+
+    def intrinsic_value_at(self, price):
+        if self.status_at(price) == OptionStatus.ITM:
+            return abs(self.strike_price - price)
+        else:
+            return 0
+
+    @property
+    def is_Call(self):
+        return self.option_type == OptionType.Call
+
+    @property
+    def is_Put(self):
+        return self.option_type == OptionType.Put
+
+    def is_ITM_at(self, price):
+        return self.status_at(price)
 
 
 if __name__ == '__main__':
