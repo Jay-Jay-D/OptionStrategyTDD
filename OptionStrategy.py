@@ -1,3 +1,4 @@
+import warnings
 from enum import Enum, IntEnum
 
 import pandas as pd
@@ -21,14 +22,39 @@ class Position(IntEnum):
 
 class OptionStrategy(object):
     def __init__(self):
-        self.strategy_options = []
+        self.strategy_options = {}
 
     def add(self, option):
-        self.strategy_options.append(option)
+        if option.ConId is None:
+            option.ConId = -999
+            warnings.warn('Option does not have an ConID!', UserWarning)
+        if option.ConId in self.strategy_options.keys():
+            option_hold = self.strategy_options[option.ConId]
+            actual_position = option_hold.quantity * option_hold.position
+            new_position = option.quantity * option.position
+            if actual_position * new_position > 0:
+                self.strategy_options[option.ConId].quantity += option.quantity
+            else:
+                self.strategy_options[option.ConId].quantity -= option.quantity
+
+            if self.strategy_options[option.ConId].quantity < 0:
+                self.strategy_options[option.ConId].quantity *= -1
+                self.strategy_options[option.ConId].position *= -1
+            elif self.strategy_options[option.ConId].quantity == 0:
+                self.strategy_options.pop(option.ConId, None)
+        else:
+            self.strategy_options[option.ConId] = option
+
+    def __str__(self):
+        for option in self.strategy_options:
+            print(option)
+
+    def get_option_from_ConId(self, ConId):
+        return self.strategy_options[ConId]
 
     def profit_loos_at(self, price):
         value = 0
-        for option in self.strategy_options:
+        for option in self.strategy_options.values():
             value += option.profit_loss_at(price)
         return value
 

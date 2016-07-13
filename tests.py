@@ -122,13 +122,13 @@ def test_when_many_OptionOperation_is_added_to_OptionStrategy_then_strategy_is_c
     # Arrange
     # Example source: http://www.theoptionsguide.com/iron-condor.aspx
     option_1 = OptionOperation(position=Position.Long, premium=50, option_type=OptionType.Put, strike_price=35,
-                               multiplier=100)
+                               multiplier=100, con_id=1)
     option_2 = OptionOperation(position=Position.Short, premium=100, option_type=OptionType.Put, strike_price=40,
-                               multiplier=100)
+                               multiplier=100, con_id=2)
     option_3 = OptionOperation(position=Position.Short, premium=100, option_type=OptionType.Call, strike_price=50,
-                               multiplier=100)
+                               multiplier=100, con_id=3)
     option_4 = OptionOperation(position=Position.Long, premium=50, option_type=OptionType.Call, strike_price=55,
-                               multiplier=100)
+                               multiplier=100, con_id=4)
     expected_strategy_valuation = [-400, -400, 100, 100, 100, -400, -400]
     # Act
     strategy = OptionStrategy()
@@ -143,16 +143,60 @@ def test_when_many_OptionOperation_is_added_to_OptionStrategy_then_strategy_is_c
     # Assert
     assert expected_strategy_valuation == actual_strategy_valuation
 
-# class OptionStrategyTests(unittest.TestCase):
-#
-#     def test_when_an_option_was_sold_and_bought_then_strategy_has_no_position(self):
-#         self.assertTrue(False)
-#
-#     def test_when_an_option_was_bought_and_sold_then_strategy_has_no_position(self):
-#         self.assertTrue(False)
-#
-#     def test_when_an_option_is_sold_two_times_ia_a_row_thrown_exception(self):
-#         self.assertTrue(False)
-#
-#     def test_when_an_option_is_bought_two_times_ia_a_row_thrown_exception(self):
-#         self.assertTrue(False)
+
+def test_when_an_OptionOperation_with_out_ConId_is_added_then_throw_warning():
+    option_1 = OptionOperation(position=Position.Long, premium=50, option_type=OptionType.Put, strike_price=35,
+                               multiplier=100)
+    strategy = OptionStrategy()
+    with pytest.warns(UserWarning):
+        strategy.add(option_1)
+
+
+def test_when_an_option_is_traded_two_times_then_OptionStrategy_adds_in_the_same_OptionOperation():
+    # Arrange
+    option_1 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=2)
+    option_2 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=1)
+    # Act
+    strategy = OptionStrategy()
+    strategy.add(option_1)
+    strategy.add(option_2)
+    # Assert
+    assert strategy.get_option_from_ConId(198003244).quantity == 3
+    assert strategy.get_option_from_ConId(198003244).position == Position.Long
+
+
+def test_when_an_option_position_changes_OptionOperation_is_adjusted():
+    # Arrange
+    option_1 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=1)
+    option_2 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Short, quantity=2)
+    option_3 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=4)
+    # Act
+    strategy = OptionStrategy()
+    strategy.add(option_1)
+    strategy.add(option_2)
+    # Assert
+    assert strategy.get_option_from_ConId(198003244).quantity == 1
+    assert strategy.get_option_from_ConId(198003244).position == Position.Short
+    strategy.add(option_3)
+    assert strategy.get_option_from_ConId(198003244).quantity == 3
+    assert strategy.get_option_from_ConId(198003244).position == Position.Long
+
+
+def test_when_an_option_is_no_longer_taken_then_StrategyOptions_throws_KeyError_when_ConID_is_called():
+    # Arrange
+    option_1 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=1)
+    option_2 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Short, quantity=1)
+    # Act
+    strategy = OptionStrategy()
+    strategy.add(option_1)
+    strategy.add(option_2)
+    # Assert
+    with pytest.raises(KeyError):
+        strategy.get_option_from_ConId(198003244)
