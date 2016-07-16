@@ -1,6 +1,8 @@
 import pytest
+import requests
 
 from OptionStrategy import *
+
 
 path_to_contracts_json = '/mnt/HDD200GB/Algorithmic Trading/OptionStrategy/testing_files/Contracts.json'
 df_contracts = pd.read_json(path_to_contracts_json).dropna(axis=1, how='all').set_index('ConId')
@@ -112,10 +114,11 @@ def test_OptionOperation_string_representation():
     # Arrange
     option = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244,
                                         position=Position.Long, premium=1, quantity=2)
+    expected_str = '2 Long ES June-16 Call 2070 at 100'
     # Act
-    message = str(option)
+    actual_str = str(option)
     # Assert
-    assert message == '2 Long ES June-16 Call 2070 at 100'
+    assert actual_str == expected_str
 
 
 def test_when_many_OptionOperation_is_added_to_OptionStrategy_then_strategy_is_correctly_valued():
@@ -139,7 +142,7 @@ def test_when_many_OptionOperation_is_added_to_OptionStrategy_then_strategy_is_c
 
     actual_strategy_valuation = []
     for price in range(30, 65, 5):
-        actual_strategy_valuation.append(strategy.profit_loos_at(price))
+        actual_strategy_valuation.append(strategy.profit_loss_at(price))
     # Assert
     assert expected_strategy_valuation == actual_strategy_valuation
 
@@ -200,3 +203,50 @@ def test_when_an_option_is_no_longer_taken_then_StrategyOptions_throws_KeyError_
     # Assert
     with pytest.raises(KeyError):
         strategy.get_option_from_ConId(198003244)
+
+
+def test_strategy_string_representation():
+    # Arrange
+    con_ids = [198003954, 198003965]
+    strategy = OptionStrategy()
+    for con_id in con_ids:
+        strategy.add(OptionOperation.from_ConId(df_contracts, ConID=con_id, position=Position.Long, premium=2))
+    expexted_str = "1 Long ES June-16 Put 2010 at 100\n1 Long ES June-16 Put 2030 at 100"
+    # Act
+    actual_str = str(strategy)
+    # Assert
+    assert expexted_str == actual_str
+
+
+def test_generate_strategy_strike_price_range():
+    # Arrange
+    con_ids = [198003954, 198003980]
+    strategy = OptionStrategy()
+    for con_id in con_ids:
+        strategy.add(OptionOperation.from_ConId(df_contracts, ConID=con_id, position=Position.Long, premium=2))
+    expected_range = [2010, 2070]
+    # Act
+    strategy_strike_range = strategy.get_strike_range()
+    # Assert
+    assert strategy_strike_range == expected_range
+
+
+def test_generate_strategy_strike_price_range_when_there_is_one_option():
+    # Arrange
+    con_ids = [198003214]
+    strategy = OptionStrategy()
+    for con_id in con_ids:
+        strategy.add(OptionOperation.from_ConId(df_contracts, ConID=con_id, position=Position.Long, premium=2))
+    expected_range = [2000, 2000]
+    # Act
+    strategy_strike_range = strategy.get_strike_range()
+    # Assert
+    assert strategy_strike_range == expected_range
+
+
+# @pytest.skip('WIP')
+def test_send_strategy_to_plotly():
+    URL = 'https://api.plot.ly/v2/files/lookup?user=jjdambrosio&path=/testing_cufflinks/OptionStrategy'
+    r = requests.get(URL)
+    print(r.ok)
+    assert True == False

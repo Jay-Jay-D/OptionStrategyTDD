@@ -21,43 +21,51 @@ class Position(IntEnum):
 
 
 class OptionStrategy(object):
-    def __init__(self):
-        self.strategy_options = {}
+    def __init__(self, name='Strategy'):
+        self.name = name
+        self.options = {}
+
 
     def add(self, option):
         if option.ConId is None:
             option.ConId = -999
             warnings.warn('Option does not have an ConID!', UserWarning)
-        if option.ConId in self.strategy_options.keys():
-            option_hold = self.strategy_options[option.ConId]
+        if option.ConId in self.options.keys():
+            option_hold = self.options[option.ConId]
             actual_position = option_hold.quantity * option_hold.position
             new_position = option.quantity * option.position
             if actual_position * new_position > 0:
-                self.strategy_options[option.ConId].quantity += option.quantity
+                self.options[option.ConId].quantity += option.quantity
             else:
-                self.strategy_options[option.ConId].quantity -= option.quantity
+                self.options[option.ConId].quantity -= option.quantity
 
-            if self.strategy_options[option.ConId].quantity < 0:
-                self.strategy_options[option.ConId].quantity *= -1
-                self.strategy_options[option.ConId].position *= -1
-            elif self.strategy_options[option.ConId].quantity == 0:
-                self.strategy_options.pop(option.ConId, None)
+            if self.options[option.ConId].quantity < 0:
+                self.options[option.ConId].quantity *= -1
+                self.options[option.ConId].position *= -1
+            elif self.options[option.ConId].quantity == 0:
+                self.options.pop(option.ConId, None)
         else:
-            self.strategy_options[option.ConId] = option
+            self.options[option.ConId] = option
 
     def __str__(self):
-        for option in self.strategy_options:
-            print(option)
+        msg = ''
+        for option in self.options.values():
+            msg += str(option) + '\n'
+        return msg[:-1]
+
 
     def get_option_from_ConId(self, ConId):
-        return self.strategy_options[ConId]
+        return self.options[ConId]
 
-    def profit_loos_at(self, price):
+    def profit_loss_at(self, price):
         value = 0
-        for option in self.strategy_options.values():
+        for option in self.options.values():
             value += option.profit_loss_at(price)
         return value
 
+    def get_strike_range(self):
+        strikes = [option.strike_price for option in self.options.values()]
+        return [min(strikes), max(strikes)]
 
 class OptionOperation(object):
     # region Constructors
