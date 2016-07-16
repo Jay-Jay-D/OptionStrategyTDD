@@ -170,7 +170,7 @@ def test_when_an_option_is_traded_two_times_then_OptionStrategy_adds_in_the_same
     assert strategy.get_option_from_ConId(198003244).position == Position.Long
 
 
-def test_when_an_option_position_changes_OptionOperation_is_adjusted():
+def test_when_an_option_position_changes_from_short_to_long_OptionOperation_is_adjusted():
     # Arrange
     option_1 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
                                           position=Position.Long, quantity=1)
@@ -188,6 +188,26 @@ def test_when_an_option_position_changes_OptionOperation_is_adjusted():
     strategy.add(option_3)
     assert strategy.get_option_from_ConId(198003244).quantity == 3
     assert strategy.get_option_from_ConId(198003244).position == Position.Long
+
+
+def test_when_an_option_position_changes_from_long_to_short_OptionOperation_is_adjusted():
+    # Arrange
+    option_1 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Short, quantity=1)
+    option_2 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Long, quantity=2)
+    option_3 = OptionOperation.from_ConId(contracts=df_contracts, ConID=198003244, premium=1,
+                                          position=Position.Short, quantity=5)
+    # Act
+    strategy = OptionStrategy()
+    strategy.add(option_1)
+    strategy.add(option_2)
+    # Assert
+    assert strategy.get_option_from_ConId(198003244).quantity == 1
+    assert strategy.get_option_from_ConId(198003244).position == Position.Long
+    strategy.add(option_3)
+    assert strategy.get_option_from_ConId(198003244).quantity == 4
+    assert strategy.get_option_from_ConId(198003244).position == Position.Short
 
 
 def test_when_an_option_is_no_longer_taken_then_StrategyOptions_throws_KeyError_when_ConID_is_called():
@@ -244,7 +264,7 @@ def test_generate_strategy_strike_price_range_when_there_is_one_option():
     assert strategy_strike_range == expected_range
 
 
-# @pytest.skip('WIP')
+@pytest.mark.skip('Wait until I have some response about the Plotly folders.')
 def test_send_strategy_to_plotly():
     # Arrange
     user = 'jjdambrosio'

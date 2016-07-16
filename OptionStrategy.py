@@ -45,7 +45,7 @@ class OptionStrategy(object):
 
             if self.options[option.ConId].quantity < 0:
                 self.options[option.ConId].quantity *= -1
-                self.options[option.ConId].position *= -1
+                self.options[option.ConId].position = Position(option_hold.position * -1)
             elif self.options[option.ConId].quantity == 0:
                 self.options.pop(option.ConId, None)
         else:
@@ -70,17 +70,20 @@ class OptionStrategy(object):
         strikes = [option.strike_price for option in self.options.values()]
         return [min(strikes), max(strikes)]
 
-    def plot(self, plotly_folder='OptionStrategy'):
+    def plot(self, plotly_folder=None):
         df = self._generate_strategy_dataframe()
+        if plotly_folder is None:
+            options_plot_name = '{}_options'.format(self.name)
+            strategy_plot_name = '{}_strategy'.format(self.name)
+        else:
+            options_plot_name = '{}/{}_options'.format(plotly_folder, self.name)
+            strategy_plot_name = '{}/{}_strategy'.format(plotly_folder, self.name)
         # Plot options profit/loss
-        options_plot_folder = '{}/{}_options'.format(plotly_folder, self.name)
-        # options_plot_folder = '{}_options'.format(self.name)
         _ = df.ix[:, :len(self.options)].iplot(kind='scatter', width=2, colorscale="dflt", theme='ggplot',
-                                               filename=options_plot_folder, asUrl=True, world_readable=True)
+                                               filename=options_plot_name, asUrl=True, world_readable=True)
         # Plot strategy profit/loss
-        strategy_plot_folder = '{}/{}_strategy'.format(plotly_folder, self.name)
-        _ = df.ix[:, :-1].iplot(kind='scatter', width=2, colorscale="dflt", theme='ggplot',
-                                filename=strategy_plot_folder, asUrl=True, world_readable=True)
+        _ = df.ix[:, self.name].iplot(kind='scatter', width=2, colorscale="dflt", theme='ggplot',
+                                      filename=strategy_plot_name, asUrl=True, world_readable=True)
 
     def _generate_strategy_dataframe(self, index_step=5):
         strategy_profit_loss = {}
@@ -236,4 +239,33 @@ class OptionOperation(object):
 
 
 if __name__ == '__main__':
+    option_1 = OptionOperation(position=Position.Long, premium=0, option_type=OptionType.Put, strike_price=2120,
+                               con_id=1, expiry='20160909')
+    option_2 = OptionOperation(position=Position.Short, premium=0, option_type=OptionType.Put, strike_price=2140,
+                               con_id=2, expiry='20160909')
+    option_3 = OptionOperation(position=Position.Short, premium=0, option_type=OptionType.Call, strike_price=2140,
+                               con_id=3, expiry='20160909')
+    option_4 = OptionOperation(position=Position.Long, premium=0, option_type=OptionType.Call, strike_price=2160,
+                               con_id=4, expiry='20160909')
+    options = [option_1, option_2, option_3, option_4]
+
+    adaptative_condor = OptionStrategy('AdaptativeCondor')
+    for option in options:
+        adaptative_condor.add(option)
+
+    print(adaptative_condor)
+
+    option_5 = OptionOperation(position=Position.Long, premium=0, option_type=OptionType.Call, strike_price=2140,
+                               con_id=3, expiry='20160909')
+    option_6 = OptionOperation(position=Position.Short, premium=0, option_type=OptionType.Call, strike_price=2160,
+                               quantity=3, con_id=4, expiry='20160909')
+    option_7 = OptionOperation(position=Position.Long, premium=0, option_type=OptionType.Call, strike_price=2180,
+                               quantity=2, con_id=5, expiry='20160909')
+
+    options = [option_5, option_6, option_7]
+
+    for option in options:
+        adaptative_condor.add(option)
+
+    print(adaptative_condor)
     pass
