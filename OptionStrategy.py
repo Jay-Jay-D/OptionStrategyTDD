@@ -3,6 +3,11 @@ from enum import Enum, IntEnum
 
 import pandas as pd
 from dateutil.parser import parse
+from math import ceil, floor
+
+import plotly.tools as tls
+import plotly.plotly as py
+import cufflinks as cf
 
 
 class OptionType(Enum):
@@ -24,7 +29,6 @@ class OptionStrategy(object):
     def __init__(self, name='Strategy'):
         self.name = name
         self.options = {}
-
 
     def add(self, option):
         if option.ConId is None:
@@ -53,7 +57,6 @@ class OptionStrategy(object):
             msg += str(option) + '\n'
         return msg[:-1]
 
-
     def get_option_from_ConId(self, ConId):
         return self.options[ConId]
 
@@ -63,9 +66,56 @@ class OptionStrategy(object):
             value += option.profit_loss_at(price)
         return value
 
-    def get_strike_range(self):
+    def _get_strike_range(self):
         strikes = [option.strike_price for option in self.options.values()]
         return [min(strikes), max(strikes)]
+
+    def plot(self, plotly_folder='OptionStrategy'):
+        df = self._generate_strategy_dataframe()
+        # Plot options profit/loss
+        options_plot_folder = '{}/{}_options'.format(plotly_folder, self.name)
+        # options_plot_folder = '{}_options'.format(self.name)
+        _ = df.ix[:, :len(self.options)].iplot(kind='scatter', width=2, colorscale="dflt", theme='ggplot',
+                                               filename=options_plot_folder, asUrl=True, world_readable=True)
+        # Plot strategy profit/loss
+        strategy_plot_folder = '{}/{}_strategy'.format(plotly_folder, self.name)
+        _ = df.ix[:, :-1].iplot(kind='scatter', width=2, colorscale="dflt", theme='ggplot',
+                                filename=strategy_plot_folder, asUrl=True, world_readable=True)
+
+    def _generate_strategy_dataframe(self, index_step=5):
+        strategy_profit_loss = {}
+        price_range = self._generate_price_range(index_step)
+        for price in price_range:
+            profit_loss = []
+            for option in self.options.values():
+                profit_loss.append(option.profit_loss_at(price))
+            profit_loss.append(self.profit_loss_at(price))
+            strategy_profit_loss[price] = profit_loss
+        df = pd.DataFrame(strategy_profit_loss).transpose()
+        col_names = self._generate_columns_names()
+        df.columns = col_names
+        return df
+
+    def _generate_columns_names(self):
+        col_names = []
+        for option in self.options.values():
+            name = '{}_{}_{}{}'.format(option.quantity, option.position.name,
+                                       option.strike_price, option.option_type.name)
+            col_names.append(name)
+        col_names.append(self.name)
+        return col_names
+
+    def _generate_price_range(self, index_step):
+        [lower_strike, upper_strike] = self._get_strike_range()
+        if lower_strike < upper_strike:
+            strike_range = upper_strike - lower_strike
+            lower_price = floor(int(lower_strike - 0.2 * strike_range) / 10) * 10
+            upper_price = ceil(int(upper_strike + 0.2 * strike_range) / 10) * 10
+            price_range = range(lower_price, upper_price + index_step, index_step)
+        else:
+            raise NotImplementedError()
+        return price_range
+
 
 class OptionOperation(object):
     # region Constructors

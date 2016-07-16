@@ -226,7 +226,7 @@ def test_generate_strategy_strike_price_range():
         strategy.add(OptionOperation.from_ConId(df_contracts, ConID=con_id, position=Position.Long, premium=2))
     expected_range = [2010, 2070]
     # Act
-    strategy_strike_range = strategy.get_strike_range()
+    strategy_strike_range = strategy._get_strike_range()
     # Assert
     assert strategy_strike_range == expected_range
 
@@ -239,14 +239,32 @@ def test_generate_strategy_strike_price_range_when_there_is_one_option():
         strategy.add(OptionOperation.from_ConId(df_contracts, ConID=con_id, position=Position.Long, premium=2))
     expected_range = [2000, 2000]
     # Act
-    strategy_strike_range = strategy.get_strike_range()
+    strategy_strike_range = strategy._get_strike_range()
     # Assert
     assert strategy_strike_range == expected_range
 
 
 # @pytest.skip('WIP')
 def test_send_strategy_to_plotly():
-    URL = 'https://api.plot.ly/v2/files/lookup?user=jjdambrosio&path=/testing_cufflinks/OptionStrategy'
-    r = requests.get(URL)
-    print(r.ok)
-    assert True == False
+    # Arrange
+    user = 'jjdambrosio'
+    plotly_folder = 'OptionStrategy'
+    options_plot_name = 'IronCondor_options'
+    strategy_plot_name = 'IronCondor_strategy'
+    # https://api.plot.ly/v2/files#lookup
+    options_plot_url = 'https://api.plot.ly/v2/files/lookup?user={}&path=/{}/{}'.format(user, plotly_folder,
+                                                                                        options_plot_name)
+    strategy_plot_url = 'https://api.plot.ly/v2/files/lookup?user={}&path=/{}/{}'.format(user, plotly_folder,
+                                                                                         strategy_plot_name)
+    strategy = OptionStrategy('IronCondor')
+    option_operations = {198003954: 1, 198003965: -1, 215521192: -1, 198003244: 1}
+    for con_id in option_operations:
+        option = OptionOperation.from_ConId(contracts=df_contracts, ConID=con_id,
+                                            position=Position(option_operations[con_id]), premium=1)
+        strategy.add(option)
+    # Act
+    strategy.plot(plotly_folder='OptionStrategy')
+    r = requests.get(options_plot_url)
+    assert r.ok == True
+    r = requests.get(strategy_plot_url)
+    assert r.ok == True
